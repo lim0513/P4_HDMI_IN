@@ -1,0 +1,31 @@
+﻿<Window x:Class="HDMI_IN.MainWindow" Icon="nhbxk-706pf-001.ico"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:HDMI_IN" WindowStartupLocation="CenterScreen" KeyDown="Window_KeyDown"
+        mc:Ignorable="d" Background="#080608" MouseDoubleClick="Window_MouseDoubleClick"
+        Title="HDMI IN" Height="480" Width="800">
+    <Window.ContextMenu>
+        <ContextMenu>
+            <MenuItem Header="自动缩放窗体" IsCheckable="True" x:Name="mi_AutoResize" Click="mi_AutoResize_Click" />
+            <MenuItem Header="采集分辨率" x:Name="mi_FrameSizeMenu">
+                <local:RadioMenuItem Header="1920x1080" Value="0" GroupName="G1" Click="mi_FrameSizeM_Click"/>
+                <local:RadioMenuItem Header="1600x1200" Value="1" GroupName="G1" Click="mi_FrameSizeM_Click"/>
+                <local:RadioMenuItem Header="1360x768" Value="2" GroupName="G1" Click="mi_FrameSizeM_Click"/>
+                <local:RadioMenuItem Header="1280x1024" Value="3" GroupName="G1" Click="mi_FrameSizeM_Click"/>
+                <local:RadioMenuItem Header="1280x960" Value="4" GroupName="G1" Click="mi_FrameSizeM_Click"/>
+                <local:RadioMenuItem Header="1280x720" Value="5" GroupName="G1" Click="mi_FrameSizeM_Click"/>
+                <local:RadioMenuItem Header="1024x768" Value="6" GroupName="G1" Click="mi_FrameSizeM_Click"/>
+                <local:RadioMenuItem Header="800x600" Value="7" GroupName="G1" Click="mi_FrameSizeM_Click"/>
+                <local:RadioMenuItem Header="720x576" Value="8" GroupName="G1" Click="mi_FrameSizeM_Click"/>
+                <local:RadioMenuItem Header="720x480" Value="9" GroupName="G1" Click="mi_FrameSizeM_Click"/>
+                <local:RadioMenuItem Header="640x480" Value="10" GroupName="G1" Click="mi_FrameSizeM_Click"/>
+            </MenuItem>
+                      
+        </ContextMenu>
+    </Window.ContextMenu>
+    <Grid>
+        <Image Name="CaptureImage" Stretch="Uniform" />
+    </Grid>
+</Window>
