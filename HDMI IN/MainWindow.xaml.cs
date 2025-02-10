@@ -118,6 +118,7 @@ namespace HDMI_IN
             bufferedWaveProvider.AddSamples(e.Buffer, 0, e.BytesRecorded);
         }
 
+        System.Drawing.Bitmap bitmap;
         private void VideoSource_NewFrame(object sender, NewFrameEventArgs eventArgs)
         {
             Dispatcher.Invoke(() =>
@@ -134,10 +135,9 @@ namespace HDMI_IN
 
                         this.Left = (screenWidth - this.ActualWidth) / 2;
                         this.Top = (screenHeight - this.ActualHeight) / 2;
-
-                        hasChanged = true;
                     }
-                    var bitmap = (System.Drawing.Bitmap)eventArgs.Frame.Clone();
+                    hasChanged = true;
+                    bitmap = (System.Drawing.Bitmap)eventArgs.Frame.Clone();
                     CaptureImage.Source = ConvertBitmapToBitmapImage(bitmap);
                 }
                 catch (Exception) { }
@@ -203,7 +203,7 @@ namespace HDMI_IN
 
         private void mi_FrameSizeM_Click(object sender, RoutedEventArgs e)
         {
-            videoSource.SignalToStop();
+            videoSource?.SignalToStop();
         }
     }
 }
