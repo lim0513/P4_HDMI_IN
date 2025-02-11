@@ -53,7 +53,17 @@ namespace HDMI_IN
 
                         Dispatcher.Invoke(() =>
                         {
-                            InitializeVideoSource(target);
+                            videoSource = new VideoCaptureDevice(target.MonikerString);
+                            videoSource.NewFrame += VideoSource_NewFrame; // 订阅新帧事件
+
+                            videoSource.VideoResolution = videoSource.VideoCapabilities[Properties.Settings.Default.FrameSizeIndex]; // 选择分辨率
+                            videoSource.PlayingFinished += (ss, ee) =>
+                            {
+                                waveIn?.StopRecording();
+                                waveOut?.Stop();
+                            };
+
+                            InitializeContextMenu(target);
                             InitializeAudio();
                         });
                     }
@@ -71,15 +81,7 @@ namespace HDMI_IN
             });
         }
 
-        private void InitializeVideoSource(FilterInfo target)
-        {
-            videoSource = new VideoCaptureDevice(target.MonikerString);
-            PopulateFrameSizeMenu();
-            var rmi = mi_FrameSizeMenu.Items.OfType<RadioMenuItem>().FirstOrDefault(i => i.Value == Properties.Settings.Default.FrameSizeIndex);
-            rmi?.SetCurrentValue(MenuItem.IsCheckedProperty, true);
-        }
-
-        private void PopulateFrameSizeMenu()
+        private void InitializeContextMenu(FilterInfo target)
         {
             mi_FrameSizeMenu.Items.Clear();
             for (int i = 0; i < videoSource.VideoCapabilities.Length; i++)
@@ -87,7 +89,7 @@ namespace HDMI_IN
                 var item = videoSource.VideoCapabilities[i];
                 var newrmi = new RadioMenuItem
                 {
-                    Header = $"{item.FrameSize.Width}x{item.FrameSize.Height}",
+                    Header = $"{item.FrameSize.Width}x{item.FrameSize.Height}@{item.AverageFrameRate}Hz",
                     GroupName = "FrameSize",
                     Value = i,
                     IsChecked = i == Properties.Settings.Default.FrameSizeIndex
@@ -113,14 +115,6 @@ namespace HDMI_IN
 
         private void StartVideoCapture()
         {
-            videoSource.VideoResolution = videoSource.VideoCapabilities[Properties.Settings.Default.FrameSizeIndex]; // 选择分辨率
-            videoSource.NewFrame += VideoSource_NewFrame; // 订阅新帧事件
-            videoSource.PlayingFinished += (ss, ee) =>
-            {
-                waveIn?.StopRecording();
-                waveOut?.Stop();
-            };
-
             videoSource.Start(); // 开始捕获
             waveOut.Play();
             waveIn.StartRecording();
@@ -220,6 +214,7 @@ namespace HDMI_IN
 
         private void Mi_FrameSizeM_Click(object sender, RoutedEventArgs e)
         {
+            videoSource.VideoResolution = videoSource.VideoCapabilities[Properties.Settings.Default.FrameSizeIndex]; // 选择分辨率
             videoSource?.SignalToStop();
         }
     }

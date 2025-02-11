@@ -10,9 +10,9 @@
         <ContextMenu>
             <MenuItem Header="自动缩放窗体" IsCheckable="True" x:Name="mi_AutoResize" Click="Mi_AutoResize_Click" />
             <MenuItem Header="采集分辨率" x:Name="mi_FrameSizeMenu">
-
+                <MenuItem Header="尚未获取设备能力" IsEnabled="False" />
             </MenuItem>
-                      
+
         </ContextMenu>
     </Window.ContextMenu>
     <Grid>
