@@ -29,7 +29,7 @@ namespace HDMI_IN
         private WaveOutEvent waveOut;              // 音频输出设备
         private BufferedWaveProvider bufferedWaveProvider; // 音频缓冲区
         private bool isWorking = true;
-        bool hasChanged = false;
+        private bool hasChanged = false;
 
         public MainWindow()
         {
@@ -41,84 +41,107 @@ namespace HDMI_IN
         private void MainWindow_Loaded(object sender, RoutedEventArgs e)
         {
             mi_AutoResize.IsChecked = Properties.Settings.Default.AutoResize;
-            var rmi = mi_FrameSizeMenu.Items.OfType<RadioMenuItem>().FirstOrDefault(i => i.Value == Properties.Settings.Default.FrameSizeIndex);
-            if (null != rmi) rmi.IsChecked = true;
 
             Task.Run(() =>
             {
-                try
+                while (isWorking)
                 {
-                    while (isWorking)
+                    if (videoSource == null)
                     {
-                        if (videoSource == null || videoSource.IsRunning == false)
+                        var target = WaitForDevice();
+                        if (target == null) return;
+
+                        Dispatcher.Invoke(() =>
                         {
-
-                            FilterInfo target = null;
-                            while (target == null)
-                            {
-                                System.Threading.Thread.Sleep(100);
-
-                                if (!isWorking) return;
-
-                                // 获取所有可用的视频设备
-                                var videoDevices = new FilterInfoCollection(FilterCategory.VideoInputDevice);
-                                target = videoDevices.Cast<FilterInfo>().ToList().FirstOrDefault(t => t.Name == "HDMI Capture");
-                            };
-
-                            // 选择第一个设备
-                            videoSource = new VideoCaptureDevice(target.MonikerString);
-                            videoSource.VideoResolution = videoSource.VideoCapabilities[Properties.Settings.Default.FrameSizeIndex]; // 选择最大分辨率
-                            videoSource.NewFrame += VideoSource_NewFrame; // 订阅新帧事件
-                            videoSource.PlayingFinished += (ss, ee) =>
-                            {
-                                if (waveIn != null)
-                                {
-                                    waveIn.StopRecording();
-                                    waveIn.Dispose();
-                                }
-                                if (waveOut != null)
-                                {
-                                    waveOut.Stop();
-                                    waveOut.Dispose();
-                                }
-                            };
-                            videoSource.Start(); // 开始捕获
-
-                            var waveInDevices = WaveInEvent.DeviceCount;
-
-                            waveIn = new WaveInEvent();
-                            waveIn.DeviceNumber = 0; // 选择第一个音频输入设备
-                            waveIn.DataAvailable += WaveIn_DataAvailable;
-                            waveIn.WaveFormat = new WaveFormat(44100, 2); // 44.1kHz, Mono
-
-                            bufferedWaveProvider = new BufferedWaveProvider(waveIn.WaveFormat);
-                            waveOut = new WaveOutEvent();
-                            waveOut.Init(bufferedWaveProvider);
-                            waveOut.Play();
-
-                            waveIn.StartRecording();
-
-                            hasChanged = false;
-                        }
-                        System.Threading.Thread.Sleep(500);
+                            InitializeVideoSource(target);
+                            InitializeAudio();
+                        });
                     }
-                }
-                catch (Exception ex)
-                {
-                    this.Dispatcher.BeginInvoke(new Action(() =>
+
+                    if (videoSource?.IsRunning == false)
                     {
-                        MessageBox.Show(ex.Message, "错误", MessageBoxButton.OK, MessageBoxImage.Error);
-                    }));
-                };
+                        var target = WaitForDevice();
+                        if (target == null) return;
+
+                        StartVideoCapture();
+                    }
+
+                    System.Threading.Thread.Sleep(500);
+                }
             });
         }
 
-        private void WaveIn_DataAvailable(object sender, WaveInEventArgs e)
+        private void InitializeVideoSource(FilterInfo target)
         {
-            bufferedWaveProvider.AddSamples(e.Buffer, 0, e.BytesRecorded);
+            videoSource = new VideoCaptureDevice(target.MonikerString);
+            PopulateFrameSizeMenu();
+            var rmi = mi_FrameSizeMenu.Items.OfType<RadioMenuItem>().FirstOrDefault(i => i.Value == Properties.Settings.Default.FrameSizeIndex);
+            rmi?.SetCurrentValue(MenuItem.IsCheckedProperty, true);
         }
 
-        System.Drawing.Bitmap bitmap;
+        private void PopulateFrameSizeMenu()
+        {
+            mi_FrameSizeMenu.Items.Clear();
+            for (int i = 0; i < videoSource.VideoCapabilities.Length; i++)
+            {
+                var item = videoSource.VideoCapabilities[i];
+                var newrmi = new RadioMenuItem
+                {
+                    Header = $"{item.FrameSize.Width}x{item.FrameSize.Height}",
+                    GroupName = "FrameSize",
+                    Value = i,
+                    IsChecked = i == Properties.Settings.Default.FrameSizeIndex
+                };
+                newrmi.Click += Mi_FrameSizeM_Click;
+                mi_FrameSizeMenu.Items.Add(newrmi);
+            }
+        }
+
+        private void InitializeAudio()
+        {
+            waveIn = new WaveInEvent
+            {
+                DeviceNumber = 0, // 选择第一个音频输入设备
+                WaveFormat = new WaveFormat(44100, 2) // 44.1kHz, Stereo
+            };
+            waveIn.DataAvailable += (ss, ee) => bufferedWaveProvider.AddSamples(ee.Buffer, 0, ee.BytesRecorded);
+
+            bufferedWaveProvider = new BufferedWaveProvider(waveIn.WaveFormat);
+            waveOut = new WaveOutEvent();
+            waveOut.Init(bufferedWaveProvider);
+        }
+
+        private void StartVideoCapture()
+        {
+            videoSource.VideoResolution = videoSource.VideoCapabilities[Properties.Settings.Default.FrameSizeIndex]; // 选择分辨率
+            videoSource.NewFrame += VideoSource_NewFrame; // 订阅新帧事件
+            videoSource.PlayingFinished += (ss, ee) =>
+            {
+                waveIn?.StopRecording();
+                waveOut?.Stop();
+            };
+
+            videoSource.Start(); // 开始捕获
+            waveOut.Play();
+            waveIn.StartRecording();
+            hasChanged = false;
+        }
+
+        private FilterInfo WaitForDevice()
+        {
+            FilterInfo target = null;
+            while (target == null)
+            {
+                System.Threading.Thread.Sleep(100);
+                if (!isWorking) return null;
+
+                // 获取所有可用的视频设备
+                var videoDevices = new FilterInfoCollection(FilterCategory.VideoInputDevice);
+                target = videoDevices.Cast<FilterInfo>().FirstOrDefault(t => t.Name == "HDMI Capture");
+            }
+            return target;
+        }
+
         private void VideoSource_NewFrame(object sender, NewFrameEventArgs eventArgs)
         {
             Dispatcher.Invoke(() =>
@@ -130,14 +153,11 @@ namespace HDMI_IN
                         this.Width = eventArgs.Frame.Width;
                         this.Height = eventArgs.Frame.Height + SystemParameters.WindowCaptionHeight + SystemParameters.WindowResizeBorderThickness.Bottom + SystemParameters.WindowResizeBorderThickness.Top;
 
-                        var screenWidth = SystemParameters.WorkArea.Width;
-                        var screenHeight = SystemParameters.WorkArea.Height;
-
-                        this.Left = (screenWidth - this.ActualWidth) / 2;
-                        this.Top = (screenHeight - this.ActualHeight) / 2;
+                        this.Left = (SystemParameters.WorkArea.Width - this.ActualWidth) / 2;
+                        this.Top = (SystemParameters.WorkArea.Height - this.ActualHeight) / 2;
+                        hasChanged = true;
                     }
-                    hasChanged = true;
-                    bitmap = (System.Drawing.Bitmap)eventArgs.Frame.Clone();
+                    var bitmap = (System.Drawing.Bitmap)eventArgs.Frame.Clone();
                     CaptureImage.Source = ConvertBitmapToBitmapImage(bitmap);
                 }
                 catch (Exception) { }
@@ -155,9 +175,8 @@ namespace HDMI_IN
                 bitmapImage.CacheOption = BitmapCacheOption.OnLoad;
                 bitmapImage.EndInit();
                 bitmapImage.Freeze();
-
-                return bitmapImage;
             }
+            return bitmapImage;
         }
 
         private void MainWindow_Closing(object sender, System.ComponentModel.CancelEventArgs e)
@@ -174,14 +193,7 @@ namespace HDMI_IN
         {
             if (e.ChangedButton == MouseButton.Left)
             {
-                if (this.WindowState == WindowState.Normal)
-                {
-                    this.WindowStyle = WindowStyle.None;
-                }
-                else
-                {
-                    this.WindowStyle = WindowStyle.SingleBorderWindow;
-                }
+                this.WindowStyle = this.WindowState == WindowState.Normal ? WindowStyle.None : WindowStyle.SingleBorderWindow;
                 this.WindowState = this.WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
             }
         }
@@ -192,16 +204,21 @@ namespace HDMI_IN
             {
                 this.WindowState = WindowState.Normal;
                 this.WindowStyle = WindowStyle.SingleBorderWindow;
+            }else if (e.Key == Key.Enter)
+            {
+                this.WindowStyle = this.WindowState == WindowState.Normal ? WindowStyle.None : WindowStyle.SingleBorderWindow;
+                this.WindowState = this.WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
             }
+
         }
 
-        private void mi_AutoResize_Click(object sender, RoutedEventArgs e)
+        private void Mi_AutoResize_Click(object sender, RoutedEventArgs e)
         {
             Properties.Settings.Default.AutoResize = mi_AutoResize.IsChecked;
             Properties.Settings.Default.Save();
         }
 
-        private void mi_FrameSizeM_Click(object sender, RoutedEventArgs e)
+        private void Mi_FrameSizeM_Click(object sender, RoutedEventArgs e)
         {
             videoSource?.SignalToStop();
         }
