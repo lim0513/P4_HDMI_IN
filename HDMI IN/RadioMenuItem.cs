@@ -15,8 +15,7 @@ namespace HDMI_IN
         public int Value { get; set; }
         protected override void OnClick()
         {
-            var ic = Parent as ItemsControl;
-            if (null != ic)
+            if (Parent is ItemsControl ic)
             {
                 var rmi = ic.Items.OfType<RadioMenuItem>().FirstOrDefault(i =>
                     i.GroupName == GroupName && i.IsChecked);
