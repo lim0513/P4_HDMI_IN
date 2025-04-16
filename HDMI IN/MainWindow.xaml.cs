@@ -95,15 +95,19 @@ namespace HDMI_IN
 
         private void InitializeAudio()
         {
-            waveIn = new WaveInEvent
+            waveIn = new WaveInEvent()
             {
                 DeviceNumber = 0, // 选择第一个音频输入设备
                 WaveFormat = new WaveFormat(44100, 2), // 44.1kHz, Stereo
-                BufferMilliseconds = 50 // 设置缓冲区大小
+                BufferMilliseconds = 20 // 设置缓冲区大小
             };
             waveIn.DataAvailable += (ss, ee) => bufferedWaveProvider.AddSamples(ee.Buffer, 0, ee.BytesRecorded);
 
-            bufferedWaveProvider = new BufferedWaveProvider(waveIn.WaveFormat);
+            bufferedWaveProvider = new BufferedWaveProvider(waveIn.WaveFormat)
+            {
+                DiscardOnBufferOverflow = true // 避免缓冲区无限增长
+            };
+
             waveOut = new WaveOutEvent();
             waveOut.Init(bufferedWaveProvider);
         }
@@ -189,7 +193,7 @@ namespace HDMI_IN
         //    }
         //    return bitmapImage;
         //}
-        
+
         public static WriteableBitmap ConvertBitmapToBitmapImage(Bitmap bitmap)
         {
             var wb = new WriteableBitmap(
