@@ -3,16 +3,15 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:local="clr-namespace:HDMI_IN" WindowStartupLocation="CenterScreen" KeyDown="Window_KeyDown"
-        mc:Ignorable="d" Background="#080608" MouseDoubleClick="Window_MouseDoubleClick"
-        Title="HDMI IN" Height="480" Width="800">
+        xmlns:local="clr-namespace:HDMI_IN" WindowStartupLocation="CenterScreen"
+        mc:Ignorable="d" Background="#080608" Title="HDMI IN" Height="480" Width="800"
+        KeyDown="Window_KeyDown" MouseDoubleClick="Window_MouseDoubleClick" Loaded="MainWindow_Loaded" Closing="MainWindow_Closing">
     <Window.ContextMenu>
         <ContextMenu>
             <MenuItem Header="自动缩放窗体" IsCheckable="True" x:Name="mi_AutoResize" Click="Mi_AutoResize_Click" />
             <MenuItem Header="采集分辨率" x:Name="mi_FrameSizeMenu">
                 <MenuItem Header="尚未获取设备能力" IsEnabled="False" />
             </MenuItem>
-
         </ContextMenu>
     </Window.ContextMenu>
     <Grid>

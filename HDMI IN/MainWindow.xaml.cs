@@ -34,8 +34,6 @@ namespace HDMI_IN
         public MainWindow()
         {
             InitializeComponent();
-            Loaded += MainWindow_Loaded; // 订阅窗口加载事件
-            Closing += MainWindow_Closing; // 订阅窗口关闭事件
         }
 
         private void MainWindow_Loaded(object sender, RoutedEventArgs e)
@@ -149,19 +147,49 @@ namespace HDMI_IN
             });
         }
 
-        private BitmapImage ConvertBitmapToBitmapImage(System.Drawing.Bitmap bitmap)
+        //private BitmapImage ConvertBitmapToBitmapImage(System.Drawing.Bitmap bitmap)
+        //{
+        //    var bitmapImage = new BitmapImage();
+        //    using (var memory = new System.IO.MemoryStream())
+        //    {
+        //        bitmap.Save(memory, System.Drawing.Imaging.ImageFormat.Bmp);
+        //        bitmapImage.BeginInit();
+        //        bitmapImage.StreamSource = memory;
+        //        bitmapImage.CacheOption = BitmapCacheOption.OnLoad;
+        //        bitmapImage.EndInit();
+        //        bitmapImage.Freeze();
+        //    }
+        //    return bitmapImage;
+        //}
+        public static WriteableBitmap ConvertBitmapToBitmapImage(Bitmap bitmap)
         {
-            var bitmapImage = new BitmapImage();
-            using (var memory = new System.IO.MemoryStream())
+            var wb = new WriteableBitmap(
+                bitmap.Width,
+                bitmap.Height,
+                96, 96, // DPI
+                PixelFormats.Bgr24, // 匹配 GDI+ 的常见格式
+                null);
+
+            // 锁定并复制像素数据
+            var bitmapData = bitmap.LockBits(
+                new System.Drawing.Rectangle(0, 0, bitmap.Width, bitmap.Height),
+                System.Drawing.Imaging.ImageLockMode.ReadOnly,
+                bitmap.PixelFormat);
+
+            try
             {
-                bitmap.Save(memory, System.Drawing.Imaging.ImageFormat.Bmp);
-                bitmapImage.BeginInit();
-                bitmapImage.StreamSource = memory;
-                bitmapImage.CacheOption = BitmapCacheOption.OnLoad;
-                bitmapImage.EndInit();
-                bitmapImage.Freeze();
+                wb.WritePixels(
+                    new Int32Rect(0, 0, bitmap.Width, bitmap.Height),
+                    bitmapData.Scan0,
+                    bitmapData.Stride * bitmapData.Height,
+                    bitmapData.Stride);
             }
-            return bitmapImage;
+            finally
+            {
+                bitmap.UnlockBits(bitmapData);
+            }
+
+            return wb;
         }
 
         private void MainWindow_Closing(object sender, System.ComponentModel.CancelEventArgs e)
