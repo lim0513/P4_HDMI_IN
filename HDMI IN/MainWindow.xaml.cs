@@ -98,7 +98,7 @@ namespace HDMI_IN
             waveIn = new WaveInEvent
             {
                 DeviceNumber = 0, // 选择第一个音频输入设备
-                WaveFormat = new WaveFormat(44100, 2)， // 44.1kHz, Stereo
+                WaveFormat = new WaveFormat(44100, 2), // 44.1kHz, Stereo
                 BufferMilliseconds = 50 // 设置缓冲区大小
             };
             waveIn.DataAvailable += (ss, ee) => bufferedWaveProvider.AddSamples(ee.Buffer, 0, ee.BytesRecorded);
