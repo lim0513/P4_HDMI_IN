@@ -8,5 +8,8 @@
     <Setting Name="FrameSizeIndex" Type="System.Int32" Scope="User">
       <Value Profile="(Default)">5</Value>
     </Setting>
+    <Setting Name="VideoInputDevice" Type="System.String" Scope="Application">
+      <Value Profile="(Default)">HDMI Capture</Value>
+    </Setting>
   </Settings>
 </SettingsFile>

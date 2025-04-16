@@ -42,49 +42,54 @@ namespace HDMI_IN
 
             Task.Run(() =>
             {
-                var target = WaitForDevice();
-                if (target == null) return;
-
-                videoSource = new VideoCaptureDevice(target.MonikerString);
-                videoSource.NewFrame += VideoSource_NewFrame; // 订阅新帧事件
-
-                videoSource.VideoResolution = videoSource.VideoCapabilities[Properties.Settings.Default.FrameSizeIndex]; // 选择分辨率
-                videoSource.PlayingFinished += (ss, ee) =>
+                try
                 {
-                    waveIn?.StopRecording();
-                    waveOut?.Stop();
+                    var target = WaitForDevice();
+                    if (target == null) return;
 
-                    Task.Run(() =>
-                    {
-                        if (WaitForDevice() == null) return;
-                        StartVideoCapture();
-                    });
-                };
-                InitializeAudio();
-                StartVideoCapture();
+                    InitializeVideo(target);
+                    InitializeAudio();
 
-                Dispatcher.Invoke(() =>
+                    StartVideoCapture();
+
+                    Dispatcher.BeginInvoke(new Action(() =>
+                        {
+                            InitializeContextMenu();
+                        }));
+                }
+                catch (Exception ex)
                 {
-                    InitializeContextMenu();
-                });
+                    Dispatcher.BeginInvoke(new Action(() =>
+                        {
+                            MessageBox.Show(ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                        }));
+
+                }
             });
         }
 
         private void InitializeContextMenu()
         {
-            mi_FrameSizeMenu.Items.Clear();
-            for (int i = 0; i < videoSource.VideoCapabilities.Length; i++)
+            try
             {
-                var item = videoSource.VideoCapabilities[i];
-                var newrmi = new RadioMenuItem
+                mi_FrameSizeMenu.Items.Clear();
+                for (int i = 0; i < videoSource.VideoCapabilities.Length; i++)
                 {
-                    Header = $"{item.FrameSize.Width}x{item.FrameSize.Height}@{item.AverageFrameRate}Hz",
-                    GroupName = "FrameSize",
-                    Value = i,
-                    IsChecked = i == Properties.Settings.Default.FrameSizeIndex
-                };
-                newrmi.Click += Mi_FrameSizeM_Click;
-                mi_FrameSizeMenu.Items.Add(newrmi);
+                    var item = videoSource.VideoCapabilities[i];
+                    var newrmi = new RadioMenuItem
+                    {
+                        Header = $"{item.FrameSize.Width}x{item.FrameSize.Height}@{item.AverageFrameRate}Hz",
+                        GroupName = "FrameSize",
+                        Value = i,
+                        IsChecked = i == Properties.Settings.Default.FrameSizeIndex
+                    };
+                    newrmi.Click += Mi_FrameSizeM_Click;
+                    mi_FrameSizeMenu.Items.Add(newrmi);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -102,12 +107,33 @@ namespace HDMI_IN
             waveOut.Init(bufferedWaveProvider);
         }
 
+        private void InitializeVideo(FilterInfo target)
+        {
+            videoSource = new VideoCaptureDevice(target.MonikerString);
+            videoSource.NewFrame += VideoSource_NewFrame; // 订阅新帧事件
+
+            videoSource.VideoResolution = videoSource.VideoCapabilities[Properties.Settings.Default.FrameSizeIndex]; // 选择分辨率
+            videoSource.PlayingFinished += (ss, ee) =>
+            {
+                ScreensaverPreventer.AllowScreensaver();
+
+                waveIn?.StopRecording();
+                waveOut?.Stop();
+
+                Task.Run(() =>
+                {
+                    if (WaitForDevice() == null) return;
+                    StartVideoCapture();
+                });
+            };
+        }
         private void StartVideoCapture()
         {
             videoSource.Start(); // 开始捕获
             waveOut.Play();
             waveIn.StartRecording();
             hasChanged = false;
+            ScreensaverPreventer.PreventScreensaver();
         }
 
         private FilterInfo WaitForDevice()
@@ -115,12 +141,13 @@ namespace HDMI_IN
             FilterInfo target = null;
             while (target == null)
             {
-                System.Threading.Thread.Sleep(100);
+                System.Threading.Thread.Sleep(500);
                 if (!isWorking) return null;
 
                 // 获取所有可用的视频设备
-                var videoDevices = new FilterInfoCollection(FilterCategory.VideoInputDevice);
-                target = videoDevices.Cast<FilterInfo>().FirstOrDefault(t => t.Name == "HDMI Capture");
+                target = new FilterInfoCollection(FilterCategory.VideoInputDevice)
+                    .Cast<FilterInfo>()
+                    .FirstOrDefault(t => t.Name == Properties.Settings.Default.VideoInputDevice);
             }
             return target;
         }
@@ -161,6 +188,7 @@ namespace HDMI_IN
         //    }
         //    return bitmapImage;
         //}
+        
         public static WriteableBitmap ConvertBitmapToBitmapImage(Bitmap bitmap)
         {
             var wb = new WriteableBitmap(
